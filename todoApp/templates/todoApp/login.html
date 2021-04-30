@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"><</script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+<div id="app">
+    <form action="{% url 'start' %}" method="post" @submit.prevent="login" id="form">
+        {% csrf_token %}
+        <label for="username">Enter your username: </label>
+        <input type="text" name="username" id="username" required>
+        <label for="password">Enter your username: </label>
+        <input type="password" name="password" id="password" required>
+        <input type="text" name="token_refresh" id="token_refresh" hidden>
+        <input type="text" name="token_access" id="token_access" hidden>
+        <input type="number" name="id" id="id" hidden>
+        <input type="submit" value="Login">
+    </form>
+    {%  for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
+    <a href="{% url 'register' %}">Sign up</a>
+    <p id="error"></p>
+</div>
+<script>
+    function token(response) {
+        document.getElementById("token_refresh").value = response.data.refresh;
+        document.getElementById("token_access").value = response.data.access;
+        document.getElementById("id").value = response.data.id;
+        document.getElementById('form').submit();
+    }
+
+    function showError() {
+        document.getElementById("error").innerHTML = "Mauvais nom d'utilisateur ou mot de passe, veuillez réessayer."
+    }
+    var app = new Vue({
+        el: '#app',
+        delimiters: ['[[', ']]'],
+        data:{
+        },
+        methods: {
+            login() {
+                username = document.getElementById('username').value;
+                password = document.getElementById('password').value;
+                const body = {
+                    'username': username,
+                    'password': password,
+                }
+                axios.post("http://127.0.0.1:8000/todoApp/api/token/", body).then(response => token(response)).catch(error => showError());
+            },
+        },
+    });
+</script>
+</body>
+</html>

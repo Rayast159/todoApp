@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    {%  load static %}
+    <script src="{% static 'todoApp/moment.js' %}"></script>
+    <style>
+        * {
+            margin: 5px;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'montserrat', sans-serif;
+        }
+
+        ul {
+            list-style: none;
+        }
+
+        #app {
+            position: relative;
+
+
+            justify-content: center;
+            align-items: center;
+
+            width: 100vw;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .button {
+            appearance: none;
+            outline: none;
+            border: none;
+            background: none;
+            cursor: pointer;
+
+            display: inline-block;
+            padding: 15px 25px;
+            background-image: linear-gradient(to right, #2e5bcc, #589bff);
+            border-radius: 8px;
+
+            color: #FFF;
+            font-size: 15px;
+            font-weight: 700;
+
+            box-shadow: 3px 3px rgba(0, 0, 0, 0.4);
+            transition: 0.4s ease-out;
+        }
+        .button:hover {
+            box-shadow: 6px 6px rgba(0, 0, 0, 0.6);
+        }
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 98;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        .fade-enter-active,.fade-leave-active {
+            transition: opacity 0.5s;
+        }
+
+        .fade-enter, .fade-leave-to {
+            opacity: 0;
+        }
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 99;
+
+            width: 100%;
+            max-width: 400px;
+            background-color: #FFF;
+            border-radius: 16px;
+
+        }
+        h1 {
+            color: #222;
+        }
+        .slide-enter-active, slide-leave-active {
+            transition: opacity 0.5s;
+        }
+
+        .slide-enter, .slide-leave-to {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <button class="button" v-on:click="hideTask()">Afficher les tâches</button>
+    <button class="button" v-on:click="showModal2 = true;">Créer une tâche</button>
+    <button class="button" v-on:click="hideCompletedTask()">Cachez les tâches complétées</button>
+    <ul>
+        <li v-for="task in tasks">
+            Name: [[ task.name ]]
+            <button class="button" v-on:click="detailsTask([[task.id]]), showModal1 = true">Details</button>
+            <transition name="fade" appear>
+                <div class="modal-overlay" v-if="showModal1" v-on:click="showModal1 = false"></div>
+            </transition>
+            <transition name="slide" appear>
+                <div class="modal" v-if="showModal1">
+                    <h1>Details</h1>
+                    <ul>
+                        <li>ID: [[ details.id ]]</li>
+                        <li>Name: [[ details.name ]]</li>
+                        <li>Deadline: [[ details.deadline ]]</li>
+                        <li>Completed: [[ details.status ]]</li>
+                        <li>Priority: [[ details.priority ]]</li>
+                    </ul>
+                    <button class="button" v-on:click="showModal1 = false">Fermer</button>
+                    <button class="button" v-on:click="showModal3 = true, updateModify()">Modifier</button>
+                    <button class="button" v-on:click="deleteTask([[ details.id ]]), showModal1 = false">Supprimer</button>
+                    <button class="button" v-if="[[details.status]]" v-on:click="completeTask([[ details.id ]]), showModal1 = false">Completer</button>
+                </div>
+            </transition>
+        </li>
+    </ul>
+    <transition name="fade" appear>
+        <div class="modal-overlay" v-if="showModal2" v-on:click="showModal2 = false"></div>
+    </transition>
+    <transition name="slide" appear>
+        <div class="modal" v-if="showModal2">
+            <h1>Create a task</h1>
+            <label for="name">Enter the name: </label>
+            <input type="text" name="name" id="name" required>
+            <label for="deadline">Enter the deadline: </label>
+            <input type="datetime-local" name="deadline" id="deadline" required>
+            <label for="priority">Priority: </label>
+            <input type="number" name="priority" id="priority" required>
+            <button class="button" v-on:click="showModal2 = false">Fermer</button>
+            <button v-on:click="createTask(), showModal2 = false" class="button">Créer</button>
+        </div>
+    </transition>
+    <transition name="fade" appear>
+                <div class="modal-overlay" v-if="showModal3" v-on:click="showModal3 = false"></div>
+            </transition>
+    <transition name="slide" appear>
+        <div class="modal" v-if="showModal3">
+            <h1>Modify a task </h1>
+            <label for="nameModify">Enter the name: </label>
+            <input type="text" name="nameModify" id="nameModify" :value="[[ details.name ]]"  required>
+            <label for="deadlineModify">Enter the deadline: </label>
+            <input type="datetime-local" name="deadlineModify" id="deadlineModify" :value="[[ date ]]" required>
+            <label for="priorityModify">Priority: </label>
+            <input type="number" name="priorityModify" id="priorityModify" :value="[[ details.priority ]]" required>
+            <button class="button" v-on:click="showModal3 = false">Fermer</button>
+            <button v-on:click="modifyTask([[ details.id ]]), showModal3 = false, showModal1 = false" class="button">Modifier</button>
+        </div>
+    </transition>
+    <form method="POST" action="{% url 'login' %}">
+        {% csrf_token %}
+        <input class="button" type="submit" value="Log out">
+    </form>
+
+</div>
+<script>
+    var app = new Vue({
+        el: '#app',
+        delimiters: ['[[', ']]'],
+        data:{
+            tasks: [],
+            tasksCompleted: [],
+            details: [],
+            showModal1: false,
+            showModal2 : false,
+            showModal3 : false,
+            hide: false,
+            hideTasks: false,
+            date: "",
+            token_access: "{{ token_access  }}" ,
+            token_refresh: "{{ token_refresh }}",
+        },
+        methods: {
+            hideTask() {
+                if (!this.hideTasks) {
+                    this.displayTask()
+                    this.hideTasks = true;
+                }
+                else {
+                    this.tasks = [],
+                    this.hideTasks = false;
+                }
+            },
+            displayTask(){
+                    axios.get('http://127.0.0.1:8000/todoApp/task/', {
+                        headers: {
+                            'Authorization': 'Bearer ' + this.token_access
+                        }
+                    }).then(response => this.tasks = (response.data).filter(item => item.userId === {{ id }})).catch(
+                        error => {
+                            if (error.response.status === 401) this.refresh_token(1, 0)
+                        }
+                    )
+            },
+            createTask() {
+                const name = document.getElementById('name').value;
+                const deadline = document.getElementById('deadline').value;
+                const priority = document.getElementById('priority').value;
+                const userId = {{ id }};
+
+                const body = {
+                    'name': name,
+                    'deadline': deadline,
+                    'priority': priority,
+                    'userId': userId,
+                }
+                axios.post("http://127.0.0.1:8000/todoApp/task/",body, { headers: {
+                    'Authorization': 'Bearer ' + this.token_access
+                    }}).then(response => this.displayTask()).catch(error => {
+                            if (error.response.status === 401) this.refresh_token(2, 0)
+                        });
+            },
+            detailsTask(id) {
+                axios.get("http://127.0.0.1:8000/todoApp/task/"+ id + "/", { headers: {
+                    'Authorization': 'Bearer ' + this.token_access
+                    }}).then(response => this.details = response.data).catch(error => {
+                            if (error.response.status === 401) this.refresh_token(3, id)
+                        });
+            },
+            deleteTask(id) {
+                axios.delete("http://127.0.0.1:8000/todoApp/task/"+ id + "/", { headers: {
+                    'Authorization': 'Bearer ' + this.token_access
+                    }}).then(response => this.displayTask()).catch(error => {
+                            if (error.response.status === 401) this.refresh_token(4, id)
+                        });
+            },
+            modifyTask(id) {
+                const nameModify = document.getElementById('nameModify').value;
+                const deadlineModify = document.getElementById('deadlineModify').value;
+                const priorityModify = document.getElementById('priorityModify').value;
+                const userId = {{ id }};
+
+                const bodyModify = {
+                    'name': nameModify,
+                    'deadline': deadlineModify,
+                    'priority': priorityModify,
+                    'userId': userId,
+                }
+                axios.put("http://127.0.0.1:8000/todoApp/task/" + id + "/", bodyModify, { headers: {
+                    'Authorization': 'Bearer ' + this.token_access
+                    }}).then(response => this.displayTask()).catch(error => {
+                            if (error.response.status === 401) this.refresh_token(5, id)
+                        });
+            },
+            updateModify() {
+                this.date = this.format_date(this.details.deadline);
+            },
+            hideCompletedTask() {
+                if (!this.hide) {
+                    this.tasks= this.tasks.filter(item => item.status === false);
+                    this.hide = true;
+                }
+                else {
+                    this.tasksCompleted = [];
+                    this.displayTask();
+                    this.hide = false;
+                }
+            },
+            format_date(value){
+                if (value) {
+                    return moment(String(value)).format('yyyy-MM-DDThh:mm')
+                }
+            },
+            completeTask(id) {
+                const bodyCompleted = {
+                    'name': this.details.name,
+                    'deadline': this.details.deadline,
+                    'status': !this.details.status,
+                    'priority': this.details.priority,
+                    'userId': {{ id }},
+                }
+                axios.put("http://127.0.0.1:8000/todoApp/task/" + id + "/", bodyCompleted, { headers: {
+                    'Authorization': 'Bearer ' + this.token_access
+                    }}).then(response => this.displayTask()).catch(eerror => {
+                            if (error.response.status === 401) this.refresh_token(6, id)
+                });
+            },
+            refresh_token(idAction, id) {
+                const body = {
+                    'refresh': this.token_refresh
+                }
+                axios.post("http://127.0.0.1:8000/todoApp/api/token/refresh/", body).then(response => this.token(response, idAction, id)).catch(error => console.log(error.message));
+            },
+            token(response, idAction, id) {
+                this.token_access = response.data.access;
+                console.log(this.token_access);
+                switch(idAction) {
+                    case 1:
+                        this.displayTask();
+                        break;
+                    case 2:
+                        this.createTask();
+                        break;
+                    case 3:
+                        this.detailsTask(id);
+                        break;
+                    case 4:
+                        this.deleteTask(id);
+                        break;
+                    case 5:
+                        this.modifyTask(id);
+                        break;
+                    case 6:
+                        this.completeTask(id);
+                        break;
+                    default:
+                        console.log("Erreur Task");
+                }
+            },
+        }
+    });
+</script>
+</body>
+</html>
