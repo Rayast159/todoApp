@@ -63,7 +63,7 @@ def register(request):
 
 def log(request):
     if request.method == 'POST':
-        messages.success(request, 'Vous avez été deconnecté')
+        messages.success(request, 'Disconnected.')
         logout(request)
     return render(request, 'todoApp/login.html', context={})
 
