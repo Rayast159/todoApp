@@ -1,6 +1,8 @@
+import rest_framework_simplejwt.views
 from django.contrib import messages
 from django.contrib.auth import logout, login
 from django.contrib.auth.decorators import login_required
+from django.contrib.sites import requests
 from django.shortcuts import render, redirect
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -35,16 +37,18 @@ def start(request):
     user = authenticate(request, username=request.POST['username'], password=request.POST['password'])
     if user is not None:
         login(request, user)
-        if request.method == 'POST':
-            id = request.POST['id']
-            context = {
-                'token_refresh': request.POST['token_refresh'],
-                'token_access': request.POST['token_access'],
-                'id': id,
-            }
-        return render(request, 'todoApp/task.html', context)
+        return redirect('tasks', request.POST['id'], request.POST['token_refresh'], request.POST['token_access'])
     else:
         return redirect('login')
+
+
+def tasks(request, id, token_refresh, token_access):
+    context = {
+        'token_refresh': token_refresh,
+        'token_access': token_access,
+        'id': id,
+    }
+    return render(request, 'todoApp/task.html', context)
 
 
 def register(request):

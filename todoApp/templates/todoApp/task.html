@@ -6,6 +6,7 @@
     <title>Todo</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf" crossorigin="anonymous"></script>
     {%  load static %}
     <script src="{% static 'todoApp/moment.js' %}"></script>
@@ -55,40 +56,46 @@
         <p class="lead">Your tasks</p>
     </div>
 </div>
+<div class="d-inline-flex p-4">
+    <div class="alert alert-primary alert-dismissible fade" :class="show : showAlert" id ="notification" role="alert">
+        <button type="button" class="btn-close" data-dismiss="alert" aria-label="Close"></button>
+        [[message]]
+    </div>
+</div>
 <div id="app">
     <div class="container p-0 w-50 ">
         <div class="row mt-2">
             <div class="col">
                 <form class="mx-auto" method="POST" action="{% url 'login' %}">
-                <div class="btn-group btn-group-lg" style="display: flex" role="group">
-                    <button type="button" class="btn btn-light" v-on:click="hideTask()">Show</button>
-                    <button type="button" class="btn btn-light " data-bs-toggle="modal" data-bs-target="#Modal2">Create</button>
-                    <button type="button" class="btn btn-light " v-on:click="hideCompletedTask()">Hide</button>
-                    {% csrf_token %}
-                    <button class="btn btn-light">Disconnect</button>
-                </div>
+                    <div class="btn-group btn-group-lg" style="display: flex" role="group">
+                        <button type="button" class="btn btn-light" v-on:click="hideTask()">Show</button>
+                        <button type="button" class="btn btn-light " data-bs-toggle="modal" data-bs-target="#Modal2">Create</button>
+                        <button type="button" class="btn btn-light " v-on:click="hideCompletedTask()">Hide</button>
+                        {% csrf_token %}
+                        <button class="btn btn-light">Disconnect</button>
+                    </div>
                 </form>
             </div>
         </div>
+
         <div class="row mt-2">
             <div class="col">
                 <ul class="list-group">
                     <div v-for="task in tasks">
-
                         <li v-if="task.status" class="list-group-item mt-2 rounded completed text-center text-white fs-4">
                             <del>
-                                [[ task.name ]]
+                                [[ task.name ]] [[ task.deadline | formatDate ]] [[ task.priority ]]
                             </del>
                             <div class="btn-group ms-auto" style="display: flex" role="group">
-                                <button type="button" class="btn btn-success tx-tfm float-end"  v-on:click="completeTask([[task.id]])">Complete</button>
+                                <button type="button" class="btn btn-success tx-tfm float-end"  v-on:click="completeTask(task.id, task.name)">Complete</button>
                                 <button type="button" class="btn btn-success tx-tfm float-end" data-bs-toggle="modal" data-bs-target="#Modal1" v-on:click="detailsTask([[task.id]])" >Details</button>
                             </div>
                         </li>
 
                         <li v-else class="list-group-item mt-2 rounded incomplete text-center text-white fs-4">
-                            [[ task.name ]]
+                            [[ task.name ]] [[ task.deadline | formatDate ]] [[ task.priority ]]
                             <div class="btn-group" style="display: flex" role="group">
-                                <button type="button" class="btn btn-danger tx-tfm "  v-on:click="completeTask([[task.id]])">Complete</button>
+                                <button type="button" class="btn btn-danger tx-tfm "  v-on:click="completeTask(task.id, task.status)">Complete</button>
                                 <button type="button" class="btn  btn-danger  tx-tfm " data-bs-toggle="modal" data-bs-target="#Modal1" v-on:click="detailsTask([[task.id]])" >Details</button>
                             </div>
                         </li>
@@ -109,7 +116,7 @@
                     <ul>
                         <li>ID: [[ details.id ]]</li>
                         <li>Name: [[ details.name ]]</li>
-                        <li>Deadline: [[ details.deadline ]]</li>
+                        <li>Deadline: [[ details.deadline | formatDate ]]</li>
                         <li>Completed: [[ details.status ]]</li>
                         <li>Priority: [[ details.priority ]]</li>
                     </ul>
@@ -135,7 +142,7 @@
                     <label for="deadline">Enter the deadline: </label>
                     <input type="datetime-local" name="deadline" id="deadline" required>
                     <label for="priority">Priority: </label>
-                    <input type="number" min="1" max="4" name="priority" id="priority" required>
+                    <input type="number" min="1" max="5" name="priority" id="priority" required>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-block btn-secondary rounded tx-tfm" data-bs-dismiss="modal">Close</button>
@@ -169,18 +176,106 @@
 </div>
 
 <script>
+    window.addEventListener('load', function () {
+        if (window.Notification && Notification.permission !== "granted") {
+            Notification.requestPermission(function (status) {
+                if (Notification.permission !== status) {
+                    Notification.permission = status;
+                }
+            });
+        }
+    })
+
+    function notify(title, gap) {
+        const emergency = gap < 0;
+        let n;
+        if (window.Notification && Notification.permission === "granted") {
+            if (emergency) {
+                n = new Notification("Emergency: your task \'" + title + "\' is " + -gap + " days late.");
+            } else {
+                n = new Notification("Warning: " + gap + " days left to complete your task \'" + title + "\'.");
+            }
+        }
+        else if (window.Notification && Notification.permission !== "denied") {
+            Notification.requestPermission(function (status) {
+                if (Notification.permission !== status) {
+                    Notification.permission = status;
+                }
+                if (status === "granted") {
+                    if (emergency) {
+                        n = new Notification("Emergency: your task \'" + title + "\' is " + gap + " days late.");
+                    } else {
+                        n = new Notification("Warning: " + gap + " days left to complete your task \'" + title + "\'.");
+                    }
+                }
+                else {
+                    if (emergency) {
+                        alert("Emergency: your task \'" + title + "\' is " + gap + " days late.");
+                    } else {
+                        alert("Warning: " + gap + " days left to complete your task \'" + title + "\'.");
+                    }
+                }
+            });
+        }
+        else {
+            if (emergency) {
+                alert("Emergency: your task \'" + title + "\' is " + gap + " days late.");
+            } else {
+                alert("Warning: " + gap + " days left to complete your task \'" + title + "\'.");
+            }
+        }
+    };
+
+    function checkDeadlines(tasks) {
+        var now = new Date();
+        var day = now.getDay();
+        var date;
+        var gap;
+        if (app.notify === false) {
+            app.notify = true;
+            tasks.forEach(function(task) {
+                date = new Date(task.deadline);
+                gap = (date.getDay() - day);
+                if (date.getDay() - day <= 3) {
+                    notify(task.name, gap);
+                }
+            })
+        }
+    }
+    Vue.filter('formatDate', function(value) {
+        if (value) {
+            return moment(String(value)).format('MM/DD/YYYY hh:mm')
+        }
+    })
+
     var app = new Vue({
         el: '#app',
         delimiters: ['[[', ']]'],
-        data:{
+        data: {
             tasks: [],
             tasksCompleted: [],
             details: [],
             hide: false,
             hideTasks: false,
-            date: "",
-            token_access: "{{ token_access  }}" ,
             token_refresh: "{{ token_refresh }}",
+            token_access: "{{ token_access }}",
+            notify: false,
+            date: "",
+            showAlert: true,
+            message: "",
+            dismissSecs: 5,
+            dismissCountDown: 0,
+        },
+        created: function () {
+            try {
+                const ws = new WebSocket("ws://localhost:3000/");
+                ws.onmessage = e => {
+                    this.message = e.data;
+                    this.showAlert();
+                }
+            } catch(err) {
+                console.log(err);
+            }
         },
         methods: {
             hideTask() {
@@ -189,8 +284,8 @@
                     this.hideTasks = true;
                 }
                 else {
-                    this.tasks = [],
-                        this.hideTasks = false;
+                    this.tasks = [];
+                    this.hideTasks = false;
                 }
             },
             displayTask(){
@@ -198,9 +293,11 @@
                     headers: {
                         'Authorization': 'Bearer ' + this.token_access
                     }
-                }).then(response => this.tasks = (response.data).filter(item => item.userId === {{ id }})).catch(
+                }).then(response => { this.tasks = (response.data).filter(item => item.userId === {{ id }}).sort(function(a, b) {
+                    return parseFloat(a.id) - parseFloat(b.id);
+                }), checkDeadlines(this.tasks)}).catch(
                     error => {
-                        if (error.response.status === 401) this.refresh_token(1, 0)
+                        if (error.response.status === 401) this.refresh_token(1, 0, null)
                     }
                 )
             },
@@ -219,21 +316,21 @@
                 axios.post("http://127.0.0.1:8000/todoApp/task/",body, { headers: {
                         'Authorization': 'Bearer ' + this.token_access
                     }}).then(response => this.displayTask()).catch(error => {
-                    if (error.response.status === 401) this.refresh_token(2, 0)
+                    if (error.response.status === 401) this.refresh_token(2, 0, null)
                 });
             },
             detailsTask(id) {
                 axios.get("http://127.0.0.1:8000/todoApp/task/"+ id + "/", { headers: {
                         'Authorization': 'Bearer ' + this.token_access
                     }}).then(response => this.details = response.data).catch(error => {
-                    if (error.response.status === 401) this.refresh_token(3, id)
+                    if (error.response.status === 401) this.refresh_token(3, id, null)
                 });
             },
             deleteTask(id) {
                 axios.delete("http://127.0.0.1:8000/todoApp/task/"+ id + "/", { headers: {
                         'Authorization': 'Bearer ' + this.token_access
                     }}).then(response => this.displayTask()).catch(error => {
-                    if (error.response.status === 401) this.refresh_token(4, id)
+                    if (error.response.status === 401) this.refresh_token(4, id, null)
                 });
             },
             modifyTask(id) {
@@ -251,21 +348,22 @@
                 axios.put("http://127.0.0.1:8000/todoApp/task/" + id + "/", bodyModify, { headers: {
                         'Authorization': 'Bearer ' + this.token_access
                     }}).then(response => this.displayTask()).catch(error => {
-                    if (error.response.status === 401) this.refresh_token(5, id)
+                    if (error.response.status === 401) this.refresh_token(5, id, null)
                 });
             },
             updateModify() {
                 this.date = this.format_date(this.details.deadline);
             },
             hideCompletedTask() {
-                if (!this.hide) {
-                    this.tasks= this.tasks.filter(item => item.status === false);
-                    this.hide = true;
-                }
-                else {
-                    this.tasksCompleted = [];
-                    this.displayTask();
-                    this.hide = false;
+                if (this.hideTasks) {
+                    if (!this.hide) {
+                        this.tasks = this.tasks.filter(item => item.status === false);
+                        this.hide = true;
+                    } else {
+                        this.tasksCompleted = [];
+                        this.displayTask();
+                        this.hide = false;
+                    }
                 }
             },
             format_date(value){
@@ -273,24 +371,24 @@
                     return moment(String(value)).format('yyyy-MM-DDThh:mm')
                 }
             },
-            completeTask(id) {
+            completeTask(id, status) {
                 const bodyCompleted = {
-                    'status': !this.details.status,
+                    'status': !status,
                 };
-                this.details.status = !this.details.status;
                 axios.patch("http://127.0.0.1:8000/todoApp/task/" + id + "/", bodyCompleted, { headers: {
                         'Authorization': 'Bearer ' + this.token_access
-                    }}).then(response => this.displayTask()).catch(eerror => {
-                    if (error.response.status === 401) this.refresh_token(6, id)
+                    }}).then(response => this.displayTask()).catch(error => {
+                    if (error.response.status === 401) this.refresh_token(6, id, status)
                 });
             },
-            refresh_token(idAction, id) {
+            refresh_token(idAction, id, status) {
                 const body = {
                     'refresh': this.token_refresh
                 }
                 axios.post("http://127.0.0.1:8000/todoApp/api/token/refresh/", body).then(response => this.token(response, idAction, id)).catch(error => console.log(error.message));
             },
-            token(response, idAction, id) {
+            token(response, idAction, id, status) {
+
                 this.token_access = response.data.access;
                 switch(idAction) {
                     case 1:
@@ -309,12 +407,18 @@
                         this.modifyTask(id);
                         break;
                     case 6:
-                        this.completeTask(id);
+                        this.completeTask(id,status);
                         break;
                     default:
                         console.log("Erreur Task");
                 }
             },
+            countDownChanged(dismissCountDown) {
+                this.dismissCountDown = dismissCountDown;
+            },
+            showAlert() {
+                this.dismissCountDown = this.dismissSecs;
+            }
         }
     });
 </script>
