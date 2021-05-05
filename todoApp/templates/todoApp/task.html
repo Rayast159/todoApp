@@ -61,24 +61,23 @@
     <div class="container p-0 w-50 ">
         <div class="row mt-2">
             <div class="col">
-                <div class="alert alert-primary alert-dismissible fade" :class="{'d-none': !showNotif, 'show': showNotif}" id ="notification" role="alert">
-                    <button type="button" class="btn-close" data-dismiss="alert" v-on:click="showNotif = false" aria-label="Close"></button>
-                    [[ message ]]
-                </div>
-            </div>
-        </div>
-        <div class="row mt-2">
-            <div class="col">
                 <form class="mx-auto" method="POST" action="{% url 'login' %}">
                     <div class="btn-group btn-group-lg" style="display: flex" role="group">
                         <button type="button" class="btn btn-light" v-on:click="hideTask()">Show</button>
                         <button type="button" class="btn btn-light " data-bs-toggle="modal" data-bs-target="#Modal2">Create</button>
                         <button type="button" class="btn btn-light " v-on:click="hideCompletedTask()">Hide</button>
+                        <button type="button" class="btn btn-light" onclick="Notifications()">
+                            Notifications
+                            <span id="badge" class="badge bg-danger">[[ notifications ]]</span>
+                        </button>
                         {% csrf_token %}
                         <button class="btn btn-light">Disconnect</button>
                     </div>
                 </form>
             </div>
+        </div>
+
+        <div class="row mt-2" id="notifications" style="display: none">
         </div>
 
         <div class="row mt-2">
@@ -171,73 +170,14 @@
 </div>
 
 <script>
-    /*window.addEventListener('load', function () {
-        if (window.Notification && Notification.permission !== "granted") {
-            Notification.requestPermission(function (status) {
-                if (Notification.permission !== status) {
-                    Notification.permission = status;
-                }
-            });
+    function Notifications() {
+        var notifs = document.getElementById("notifications");
+        if (notifs.style.display === "none") {
+            notifs.style.display = "block";
+        } else {
+            notifs.style.display = "none";
         }
-    })*/
-
-    /*function notify(title, gap) {
-        const emergency = gap < 0;
-        let n;
-        if (window.Notification && Notification.permission === "granted") {
-            if (emergency) {
-                n = new Notification("Emergency: your task \'" + title + "\' is " + -gap + " days late.");
-            } else {
-                n = new Notification("Warning: " + gap + " days left to complete your task \'" + title + "\'.");
-            }
-        }
-        else if (window.Notification && Notification.permission !== "denied") {
-            Notification.requestPermission(function (status) {
-                if (Notification.permission !== status) {
-                    Notification.permission = status;
-                }
-                if (status === "granted") {
-                    if (emergency) {
-                        n = new Notification("Emergency: your task \'" + title + "\' is " + gap + " days late.");
-                    } else {
-                        n = new Notification("Warning: " + gap + " days left to complete your task \'" + title + "\'.");
-                    }
-                }
-                else {
-                    if (emergency) {
-                        alert("Emergency: your task \'" + title + "\' is " + gap + " days late.");
-                    } else {
-                        alert("Warning: " + gap + " days left to complete your task \'" + title + "\'.");
-                    }
-                }
-            });
-        }
-        else {
-            if (emergency) {
-                alert("Emergency: your task \'" + title + "\' is " + gap + " days late.");
-            } else {
-                alert("Warning: " + gap + " days left to complete your task \'" + title + "\'.");
-            }
-        }
-    };
-
-    function checkDeadlines(tasks) {
-        var now = new Date();
-        var day = now.getDay();
-        var date;
-        var gap;
-        if (app.notify === false) {
-            app.notify = true;
-            tasks.forEach(function(task) {
-                date = new Date(task.deadline);
-                gap = (date.getDay() - day);
-                if (date.getDay() - day <= 3) {
-                    notify(task.name, gap);
-                }
-            })
-        }
-    }*/
-
+    }
     Vue.filter('formatDate', function(value) {
         if (value) {
             return moment(String(value)).format('MM/DD/YYYY hh:mm')
@@ -257,16 +197,35 @@
             token_access: "{{ token_access }}",
             notify: false,
             date: "",
-            showNotif: false,
-            message:"",
+            showNotif: true,
+            notifications: 0,
         },
         created: function () {
             try {
                 const ws = new WebSocket("ws://localhost:3000/");
                 ws.onmessage = e => {
-                    this.message = e.data;
-                    this.showAlert();
+                    console.log(app.notifications)
+                    if (app.notifications < 10) {
+                        app.notifications++
+                        document.getElementById("notifications").insertAdjacentHTML('afterbegin', "<div class=\"alert alert-danger alert-dismissible fade show\" role=\"alert\"> <button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"alert\" onclick=\"app.notifications--\" aria-label=\"Close\"></button>" + e.data + "</div>")
+                    }
                 }
+                setInterval(function() {
+                    var now = new Date();
+                    var day = now.getDay();
+                    var date;
+                    var gap;
+                    if (app.tasks !== undefined) {
+                        app.tasks.forEach(function(task) {
+                                date = new Date(task.deadline);
+                                gap = (date.getDay() - day);
+                                if (date.getDay() - day <= 3) {
+                                    ws.send(JSON.stringify({name: task.name, gap: gap,}));
+                                }
+                            }
+                        )
+                    }
+                }, 5000);
             } catch(err) {
                 console.log(err);
             }
@@ -407,12 +366,6 @@
                         console.log("Erreur Task");
                 }
             },
-            countDownChanged(dismissCountDown) {
-                this.dismissCountDown = dismissCountDown;
-            },
-            showAlert() {
-                this.showNotif = true;
-            }
         }
     });
 </script>
