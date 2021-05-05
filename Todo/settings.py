@@ -38,7 +38,8 @@ INSTALLED_APPS = [
     'todoApp.apps.TodoappConfig',
     'rest_framework',
     'rest_framework.authtoken',
-    'Todo'
+    'Todo',
+    'django_rq',
 ]
 
 MIDDLEWARE = [
@@ -133,4 +134,12 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
+}
+
+RQ_QUEUES = {
+    'default': {
+        'HOST': 'localhost',
+        'PORT': 6379,
+        'DB': 0
+    }
 }

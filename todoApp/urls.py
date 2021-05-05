@@ -15,4 +15,7 @@ urlpatterns = [
     path('register', views.register, name='register'),
     path('api/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', jwt_views.TokenRefreshView.as_view(), name='token_refresh'),
+    path('django-rq/', include('django_rq.urls')),
+    path('success/', views.success, name='success'),
+    path('error/', views.error, name='error'),
 ]

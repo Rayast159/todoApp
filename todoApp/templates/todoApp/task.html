@@ -56,14 +56,17 @@
         <p class="lead">Your tasks</p>
     </div>
 </div>
-<div class="d-inline-flex p-4">
-    <div class="alert alert-primary alert-dismissible fade" :class="show : showAlert" id ="notification" role="alert">
-        <button type="button" class="btn-close" data-dismiss="alert" aria-label="Close"></button>
-        [[message]]
-    </div>
-</div>
+
 <div id="app">
     <div class="container p-0 w-50 ">
+        <div class="row mt-2">
+            <div class="col">
+                <div class="alert alert-primary alert-dismissible fade" :class="{'d-none': !showNotif, 'show': showNotif}" id ="notification" role="alert">
+                    <button type="button" class="btn-close" data-dismiss="alert" v-on:click="showNotif = false" aria-label="Close"></button>
+                    [[ message ]]
+                </div>
+            </div>
+        </div>
         <div class="row mt-2">
             <div class="col">
                 <form class="mx-auto" method="POST" action="{% url 'login' %}">
@@ -82,21 +85,13 @@
             <div class="col">
                 <ul class="list-group">
                     <div v-for="task in tasks">
-                        <li v-if="task.status" class="list-group-item mt-2 rounded completed text-center text-white fs-4">
+                        <li class="list-group-item mt-2 rounded text-center text-white fs-4" :class="{completed: task.status, incomplete: !task.status}">
                             <del>
                                 [[ task.name ]] [[ task.deadline | formatDate ]] [[ task.priority ]]
                             </del>
                             <div class="btn-group ms-auto" style="display: flex" role="group">
-                                <button type="button" class="btn btn-success tx-tfm float-end"  v-on:click="completeTask(task.id, task.name)">Complete</button>
-                                <button type="button" class="btn btn-success tx-tfm float-end" data-bs-toggle="modal" data-bs-target="#Modal1" v-on:click="detailsTask([[task.id]])" >Details</button>
-                            </div>
-                        </li>
-
-                        <li v-else class="list-group-item mt-2 rounded incomplete text-center text-white fs-4">
-                            [[ task.name ]] [[ task.deadline | formatDate ]] [[ task.priority ]]
-                            <div class="btn-group" style="display: flex" role="group">
-                                <button type="button" class="btn btn-danger tx-tfm "  v-on:click="completeTask(task.id, task.status)">Complete</button>
-                                <button type="button" class="btn  btn-danger  tx-tfm " data-bs-toggle="modal" data-bs-target="#Modal1" v-on:click="detailsTask([[task.id]])" >Details</button>
+                                <button type="button" class="btn tx-tfm" :class="{'btn-success': task.status, 'btn-danger': !task.status}" v-on:click="completeTask(task.id, task.status)">Complete</button>
+                                <button type="button" class="btn tx-tfm" :class="{'btn-success': task.status, 'btn-danger': !task.status}" data-bs-toggle="modal" data-bs-target="#Modal1" v-on:click="detailsTask(task.id)" >Details</button>
                             </div>
                         </li>
                     </div>
@@ -124,7 +119,7 @@
                 <div class="modal-footer d-flex flex-row">
                     <button class="btn btn-block btn-secondary rounded tx-tfm" data-bs-dismiss="modal">Close</button>
                     <button class="btn btn-block btn-primary rounded tx-tfm" v-on:click="updateModify()" data-bs-dismiss="modal" data-bs-toggle="modal"  data-bs-target="#Modal3" >Modify</button>
-                    <button class="btn btn-block btn-primary rounded tx-tfm" v-on:click="deleteTask([[ details.id ]])" data-bs-dismiss="modal">Delete</button>
+                    <button class="btn btn-block btn-primary rounded tx-tfm" v-on:click="deleteTask(details.id)" data-bs-dismiss="modal">Delete</button>
                 </div>
             </div>
         </div>
@@ -160,15 +155,15 @@
                 </div>
                 <div class="modal-body">
                     <label for="nameModify">Enter the name: </label>
-                    <input type="text" name="nameModify" id="nameModify" :value="[[ details.name ]]"  required>
+                    <input type="text" name="nameModify" id="nameModify" :value="details.name"  required>
                     <label for="deadlineModify">Enter the deadline: </label>
-                    <input type="datetime-local" name="deadlineModify" id="deadlineModify" :value="[[ date ]]" required>
+                    <input type="datetime-local" name="deadlineModify" id="deadlineModify" :value="date" required>
                     <label for="priorityModify">Priority: </label>
-                    <input type="number" min="1" max="5" name="priorityModify" id="priorityModify" :value="[[ details.priority ]]" required>
+                    <input type="number" min="1" max="5" name="priorityModify" id="priorityModify" :value="details.priority" required>
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-block btn-secondary rounded tx-tfm" data-bs-dismiss="modal">Close</button>
-                    <button v-on:click="modifyTask([[ details.id ]])" class="btn btn-block btn-primary rounded tx-tfm" data-bs-dismiss="modal">Modify</button>
+                    <button v-on:click="modifyTask(details.id)" class="btn btn-block btn-primary rounded tx-tfm" data-bs-dismiss="modal">Modify</button>
                 </div>
             </div>
         </div>
@@ -176,7 +171,7 @@
 </div>
 
 <script>
-    window.addEventListener('load', function () {
+    /*window.addEventListener('load', function () {
         if (window.Notification && Notification.permission !== "granted") {
             Notification.requestPermission(function (status) {
                 if (Notification.permission !== status) {
@@ -184,9 +179,9 @@
                 }
             });
         }
-    })
+    })*/
 
-    function notify(title, gap) {
+    /*function notify(title, gap) {
         const emergency = gap < 0;
         let n;
         if (window.Notification && Notification.permission === "granted") {
@@ -241,7 +236,8 @@
                 }
             })
         }
-    }
+    }*/
+
     Vue.filter('formatDate', function(value) {
         if (value) {
             return moment(String(value)).format('MM/DD/YYYY hh:mm')
@@ -261,10 +257,8 @@
             token_access: "{{ token_access }}",
             notify: false,
             date: "",
-            showAlert: true,
-            message: "",
-            dismissSecs: 5,
-            dismissCountDown: 0,
+            showNotif: false,
+            message:"",
         },
         created: function () {
             try {
@@ -295,7 +289,7 @@
                     }
                 }).then(response => { this.tasks = (response.data).filter(item => item.userId === {{ id }}).sort(function(a, b) {
                     return parseFloat(a.id) - parseFloat(b.id);
-                }), checkDeadlines(this.tasks)}).catch(
+                })/*, checkDeadlines(this.tasks)*/}).catch(
                     error => {
                         if (error.response.status === 401) this.refresh_token(1, 0, null)
                     }
@@ -417,7 +411,7 @@
                 this.dismissCountDown = dismissCountDown;
             },
             showAlert() {
-                this.dismissCountDown = this.dismissSecs;
+                this.showNotif = true;
             }
         }
     });

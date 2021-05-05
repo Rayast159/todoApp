@@ -4,6 +4,7 @@ from django.contrib.auth import logout, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites import requests
 from django.shortcuts import render, redirect
+from django_rq import get_queue
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
@@ -16,6 +17,9 @@ from .serializers import UserSerializer
 from .forms import CreateUsersForm
 from django.contrib.auth import authenticate
 
+
+def say_hello():
+    return 'Hello'
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -71,6 +75,16 @@ def log(request):
         logout(request)
     return render(request, 'todoApp/login.html', context={})
 
+
+def success(request):
+    queue = get_queue()
+    queue.enqueue(say_hello)
+    return render(request, 'django_rq/test.html',{})
+
+def error(request):
+    queue = get_queue()
+    queue.enqueue(say_hello)
+    raise ValueError
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
