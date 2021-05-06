@@ -48,7 +48,7 @@ def tasks(request, id, token_refresh, token_access):
         'token_access': token_access,
         'id': id,
     }
-    return render(request, 'todoApp/task.html', context)
+    return render(request, 'task.html', context)
 
 
 def register(request):
@@ -60,24 +60,18 @@ def register(request):
             user = form.cleaned_data.get('username')
             messages.success(request, 'Account was created for ' + user)
             return redirect('login')
-
     context = {'form': form}
-    return render(request, 'todoApp/register.html', context)
+    return render(request, 'register.html', context)
 
 
 def log(request):
     if request.method == 'POST':
         messages.success(request, 'Disconnected.')
         logout(request)
-    return render(request, 'todoApp/login.html', context={})
+    return render(request, 'login.html', context={})
 
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
     permission_classes = [IsAuthenticated]
-
-
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all().order_by('-date_joined')
-    serializer_class = UserSerializer
