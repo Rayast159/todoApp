@@ -101,7 +101,6 @@
                 </div>
                 <div class="modal-body">
                     <ul>
-                        <li>ID: [[ details.id ]]</li>
                         <li>Name: [[ details.name ]]</li>
                         <li>Deadline: [[ details.deadline | formatDate ]]</li>
                         <li>Completed: [[ details.status ]]</li>
@@ -125,7 +124,7 @@
                 </div>
                 <div class="modal-body">
                     <label for="name">Enter the name: </label>
-                    <input type="text" name="name" id="name" required>
+                    <input type="text" name="name" id="name" maxlength="40" required>
                     <label for="deadline">Enter the deadline: </label>
                     <input type="datetime-local" name="deadline" id="deadline" required>
                     <label for="priority">Priority: </label>
@@ -194,10 +193,10 @@
             notifications: 0,
         },
         created: function () {
+            this.displayTask();
             try {
                 const ws = new WebSocket("ws://localhost:3000/");
                 ws.onmessage = e => {
-                    console.log(app.notifications)
                     if (app.notifications < 10) {
                         app.notifications++
                         document.getElementById("notifications").insertAdjacentHTML('afterbegin', "<div class=\"alert alert-danger alert-dismissible fade show\" role=\"alert\"> <button type=\"button\" class=\"btn-close\" data-bs-dismiss=\"alert\" onclick=\"app.notifications--\" aria-label=\"Close\"></button>" + e.data + "</div>")
@@ -218,7 +217,7 @@
                             }
                         )
                     }
-                }, 5000);
+                }, 18000000);
             } catch(err) {
                 console.log(err);
             }
